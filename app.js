@@ -14,6 +14,18 @@
 
   const STATUS_LIST = ['todo', 'process', 'done'];
 
+  // 截止日期格式（<input type="date"> 的值：YYYY-MM-DD）
+  const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+  // 取得本地時區的今天（YYYY-MM-DD），用來和截止日期比較
+  function getTodayKey() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   const EMPTY_HINTS = {
     todo: '尚無待辦項目 · 可新增或拖曳至此',
     process: '將進行中的任務卡片拖曳至此',
@@ -28,6 +40,7 @@
   const todoAssignee = document.getElementById('todo-assignee');
   const todoCategory = document.getElementById('todo-category');
   const todoPriority = document.getElementById('todo-priority');
+  const todoDue = document.getElementById('todo-due');
   const filterTabs = document.querySelectorAll('.filter-tab');
   const countAllEl = document.getElementById('count-all');
   const countWorkEl = document.getElementById('count-work');
@@ -116,13 +129,14 @@
   }
 
   // 新增任務（預設進入 To-do 欄位並依優先程度排序）
-  function addTodo(text, assignee, category, priority) {
+  function addTodo(text, assignee, category, priority, dueDate) {
     const cleanText = text.trim();
     if (!cleanText) return;
 
     const cleanAssignee = assignee.trim();
     const validCategory = category === 'life' ? 'life' : 'work';
     const validPriority = PRIORITY_CONFIG[priority] ? priority : 'medium';
+    const validDueDate = DUE_DATE_PATTERN.test(dueDate || '') ? dueDate : '';
 
     const newTodo = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -130,6 +144,7 @@
       assignee: cleanAssignee,
       category: validCategory,
       priority: validPriority,
+      dueDate: validDueDate,
       status: 'todo',
       completed: false,
       createdAt: Date.now(),
@@ -254,6 +269,16 @@
       assigneeBadge.textContent = `👤 ${item.assignee}`;
       assigneeBadge.title = `負責人：${item.assignee}`;
       badgesDiv.appendChild(assigneeBadge);
+    }
+
+    if (item.dueDate && DUE_DATE_PATTERN.test(item.dueDate)) {
+      const dueLabel = item.dueDate.replace(/-/g, '/');
+      const isDue = item.dueDate <= getTodayKey();
+      const dueBadge = document.createElement('span');
+      dueBadge.className = isDue ? 'badge badge-due is-due' : 'badge badge-due';
+      dueBadge.textContent = `📅 ${dueLabel}`;
+      dueBadge.title = isDue ? `截止日期：${dueLabel}（今天到期或已過期）` : `截止日期：${dueLabel}`;
+      badgesDiv.appendChild(dueBadge);
     }
 
     footerDiv.appendChild(badgesDiv);
@@ -387,11 +412,13 @@
       todoInput.value,
       todoAssignee.value,
       todoCategory.value,
-      todoPriority.value
+      todoPriority.value,
+      todoDue.value
     );
     todoInput.value = '';
     todoAssignee.value = '';
     todoPriority.value = 'medium';
+    todoDue.value = '';
     todoInput.focus();
   });
 
